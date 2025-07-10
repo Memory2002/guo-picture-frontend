@@ -247,7 +247,7 @@ const handleReview = async (record: API.Picture, reviewStatus: number) => {
             </a-space>
           </template>
           <template v-else-if="column.dataIndex === 'picInfo'">
-            <div style="line-height: 1.4">
+            <div style="line-height: 1.4; font-size: 14px">
               <div>{{ record.picFormat }}</div>
               <div>{{ record.picWidth }}×{{ record.picHeight }}</div>
               <div>{{ (record.picSize / 1024).toFixed(1) }}KB</div>
@@ -281,12 +281,12 @@ const handleReview = async (record: API.Picture, reviewStatus: number) => {
             </div>
           </template>
           <template v-else-if="column.dataIndex === 'createTime'">
-            <div style="font-size: 12px">
+            <div style="font-size: 14px">
               {{ dayjs(record.createTime).format('YYYY-MM-DD HH:mm') }}
             </div>
           </template>
           <template v-else-if="column.dataIndex === 'editTime'">
-            <div style="font-size: 12px">
+            <div style="font-size: 14px">
               {{ dayjs(record.editTime).format('YYYY-MM-DD HH:mm') }}
             </div>
           </template>

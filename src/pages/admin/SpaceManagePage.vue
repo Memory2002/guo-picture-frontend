@@ -200,17 +200,19 @@ const doDelete = async (id: number) => {
             <a-typography-text copyable>{{ record.id }}</a-typography-text>
           </template>
           <template v-else-if="column.dataIndex === 'spaceLevel'">
-            <a-tag color="blue">{{ SPACE_LEVEL_MAP[record.spaceLevel] }}</a-tag>
+            <a-tag color="blue" style="font-size: 14px">{{
+              SPACE_LEVEL_MAP[record.spaceLevel]
+            }}</a-tag>
           </template>
           <template v-else-if="column.dataIndex === 'spaceType'">
             <a-tag color="green">{{ SPACE_TYPE_MAP[record.spaceType] }}</a-tag>
           </template>
           <template v-else-if="column.dataIndex === 'spaceUseInfo'">
             <div style="line-height: 1.4">
-              <div style="font-size: 12px">
+              <div style="font-size: 14px">
                 {{ formatSize(record.totalSize) }} / {{ formatSize(record.maxSize) }}
               </div>
-              <div style="font-size: 12px; color: #666">
+              <div style="font-size: 14px; color: #666">
                 {{ record.totalCount }} / {{ record.maxCount }} 张
               </div>
             </div>
@@ -219,12 +221,12 @@ const doDelete = async (id: number) => {
             <a-typography-text copyable>{{ record.userId }}</a-typography-text>
           </template>
           <template v-else-if="column.dataIndex === 'createTime'">
-            <div style="font-size: 12px">
+            <div style="font-size: 14px">
               {{ dayjs(record.createTime).format('YYYY-MM-DD HH:mm') }}
             </div>
           </template>
           <template v-else-if="column.dataIndex === 'updateTime'">
-            <div style="font-size: 12px">
+            <div style="font-size: 14px">
               {{ dayjs(record.updateTime).format('YYYY-MM-DD HH:mm') }}
             </div>
           </template>
