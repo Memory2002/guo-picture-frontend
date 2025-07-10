@@ -28,9 +28,28 @@
               </a-space>
               <template #overlay>
                 <a-menu>
+                  <a-menu-item>
+                    <router-link to="/my_space">
+                      <UserOutlined />
+                      我的空间
+                    </router-link>
+                  </a-menu-item>
+                  <!--                  <a-menu-item @click="doEdit">-->
+                  <a-menu-item>
+                    <router-link to="/user/edit">
+                      <EditOutlined />
+                      编辑信息
+                    </router-link>
+                  </a-menu-item>
+                  <a-menu-item>
+                    <a href="/user/exchange_vip">
+                      <CrownOutlined />
+                      兑换 VIP
+                    </a>
+                  </a-menu-item>
                   <a-menu-item @click="doLogout">
                     <LogoutOutlined />
-                    推出登录
+                    退出登录
                   </a-menu-item>
                 </a-menu>
               </template>
@@ -46,7 +65,13 @@
 </template>
 <script lang="ts" setup>
 import { computed, h, ref } from 'vue'
-import { LogoutOutlined, HomeOutlined } from '@ant-design/icons-vue'
+import {
+  LogoutOutlined,
+  HomeOutlined,
+  EditOutlined,
+  UserOutlined,
+  CrownOutlined,
+} from '@ant-design/icons-vue'
 import { MenuProps, message } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
@@ -76,6 +101,11 @@ const originItems = [
     key: '/admin/pictureManage',
     label: '图片管理',
     title: '图片管理',
+  },
+  {
+    key: '/admin/spaceManage',
+    label: '空间管理',
+    title: '空间管理',
   },
   {
     key: 'others',
@@ -117,6 +147,12 @@ const doMenuClick = ({ key }) => {
   })
 }
 
+// // 编辑用户信息
+// const doEdit = () => {
+//   router.push({
+//     path: '/user/edit',
+//   })
+// }
 // 用户注销
 const doLogout = async () => {
   const res = await userLogout()

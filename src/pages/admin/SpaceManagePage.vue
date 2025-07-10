@@ -1,70 +1,72 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { deletePicture, listPictureByPage, doPictureReview } from '@/api/pictureController.ts'
-import { message } from 'ant-design-vue'
+import { deleteSpace, listSpaceByPage } from '@/api/spaceController.ts'
+import { message, type TablePaginationConfig } from 'ant-design-vue'
 import dayjs from 'dayjs'
-import { PIC_REVIEW_STATUS_ENUM, PIC_REVIEW_STATUS_MAP, PIC_REVIEW_STATUS_OPTIONS } from '@/constant/picture.ts'
+import {
+  SPACE_LEVEL_MAP,
+  SPACE_LEVEL_OPTIONS,
+  SPACE_TYPE_MAP,
+  SPACE_TYPE_OPTIONS,
+} from '@/constant/space.ts'
+import { formatSize } from '@/utils'
 
 const columns = [
   {
-    title: 'id',
+    title: 'ID',
     dataIndex: 'id',
-    width: 80,
+    width: 100,
   },
   {
-    title: '图片',
-    dataIndex: 'url',
-  },
-  {
-    title: '名称',
-    dataIndex: 'name',
-  },
-  {
-    title: '简介',
-    dataIndex: 'introduction',
+    title: '空间名称',
+    dataIndex: 'spaceName',
+    width: 150,
     ellipsis: true,
   },
   {
-    title: '类型',
-    dataIndex: 'category',
+    title: '空间级别',
+    dataIndex: 'spaceLevel',
+    width: 100,
   },
   {
-    title: '标签',
-    dataIndex: 'tags',
+    title: '空间类别',
+    dataIndex: 'spaceType',
+    width: 100,
   },
   {
-    title: '图片信息',
-    dataIndex: 'picInfo',
+    title: '使用情况',
+    dataIndex: 'spaceUseInfo',
+    width: 160,
   },
   {
-    title: '用户 id',
+    title: '用户ID',
     dataIndex: 'userId',
-    width: 80,
-  },
-  {
-    title: '审核信息',
-    dataIndex: 'reviewMessage',
+    width: 100,
   },
   {
     title: '创建时间',
     dataIndex: 'createTime',
+    width: 120,
   },
   {
-    title: '编辑时间',
-    dataIndex: 'editTime',
+    title: '更新时间',
+    dataIndex: 'updateTime',
+    width: 120,
   },
   {
     title: '操作',
     key: 'action',
+    width: 200,
+    fixed: 'right',
   },
 ]
 
 // 定义数据
-const dataList = ref<API.Picture[]>([])
+const dataList = ref<API.Space[]>([])
 const total = ref(0)
 
 // 搜索条件
-const searchParams = reactive<API.PictureQueryRequest>({
+const searchParams = reactive<API.SpaceQueryRequest>({
   current: 1,
   pageSize: 10,
   sortField: 'createTime',
@@ -73,7 +75,7 @@ const searchParams = reactive<API.PictureQueryRequest>({
 
 // 获取数据
 const fetchData = async () => {
-  const res = await listPictureByPage({
+  const res = await listSpaceByPage({
     ...searchParams,
   })
   if (res.data.code === 0 && res.data.data) {
@@ -101,7 +103,7 @@ const pagination = computed(() => {
 })
 
 // 表格变化之后重新获取数据
-const doTableChange = (page: any) => {
+const doTableChange = (page: TablePaginationConfig) => {
   // 更新搜索条件
   searchParams.current = page.current
   searchParams.pageSize = page.pageSize
@@ -123,7 +125,7 @@ const doDelete = async (id: number) => {
     message.error('图片ID不能为空')
     return
   }
-  const res = await deletePicture({ id })
+  const res = await deleteSpace({ id })
   if (res.data.code === 0) {
     message.success('删除图片成功')
     // 重新获取数据
@@ -132,138 +134,198 @@ const doDelete = async (id: number) => {
     message.error('删除图片失败， ' + res.data.message)
   }
 }
-
-// 审核图片
-const handleReview = async (record: API.Picture, reviewStatus: number) => {
-  const reviewMessage =
-    reviewStatus === PIC_REVIEW_STATUS_ENUM.PASS ? '管理员审核通过' : '管理员审核拒绝'
-  const res = await doPictureReview({
-    id: record.id,
-    reviewStatus,
-    reviewMessage,
-  })
-  if (res.data.code === 0) {
-    message.success('审核操作成功')
-    // 重新获取列表数据
-    fetchData()
-  } else {
-    message.error('审核操作失败， ' + res.data.message)
-  }
-}
 </script>
 
 <template>
-  <div id="pictureManagePage">
-    <a-flex justify="space-between">
-      <h2>图片管理</h2>
-      <a-space>
-        <a-button type="primary" href="/add_picture" target="_blank">+ 创建图片</a-button>
-        <a-button type="primary" href="/add_picture/batch" target="_blank" ghost>+ 批量创建图片</a-button>
+  <div id="spaceManagePage">
+    <!-- 页面标题和操作按钮 -->
+    <div class="page-header">
+      <a-typography-title :level="3" style="margin: 0">空间管理</a-typography-title>
+      <a-space wrap>
+        <a-button type="primary" href="/add_space" target="_blank">+ 创建空间</a-button>
+        <a-button href="/space_analyze?queryPublic=1" target="_blank">分析公共图库</a-button>
+        <a-button href="/space_analyze?queryAll=1" target="_blank">分析全部空间</a-button>
       </a-space>
-    </a-flex>
-    <div style="margin-bottom: 16px" />
+    </div>
 
-    <!-- 搜索表单 -->
-    <a-form layout="inline" :model="searchParams" @finish="doSearch">
-      <a-form-item label="关键词">
-        <a-input
-          v-model:value="searchParams.searchText"
-          placeholder="从名称和简介搜索"
-          allow-clear
-        />
-      </a-form-item>
-      <a-form-item label="类型">
-        <a-input v-model:value="searchParams.category" placeholder="请输入类型" allow-clear />
-      </a-form-item>
-      <a-form-item label="标签">
-        <a-select
-          v-model:value="searchParams.tags"
-          mode="tags"
-          placeholder="请输入标签"
-          style="width: 180px"
-          allow-clear
-        />
-      </a-form-item>
-      <a-form-item name="reviewStatus" label="审核状态">
-        <a-select
-          v-model:value="searchParams.reviewStatus"
-          style="min-width: 180px"
-          placeholder="请选择审核状态"
-          :options="PIC_REVIEW_STATUS_OPTIONS"
-          allow-clear
-        />
-      </a-form-item>
-      <a-form-item>
-        <a-button type="primary" html-type="submit">搜索</a-button>
-      </a-form-item>
-    </a-form>
+    <a-card :bordered="false" style="border-radius: 16px; margin-bottom: 24px">
+      <!-- 搜索表单 -->
+      <a-form layout="inline" :model="searchParams" @finish="doSearch">
+        <a-form-item label="空间名称">
+          <a-input
+            v-model:value="searchParams.spaceName"
+            placeholder="请输入空间名称"
+            allow-clear
+          />
+        </a-form-item>
+        <a-form-item name="spaceLevel" label="空间级别">
+          <a-select
+            v-model:value="searchParams.spaceLevel"
+            style="min-width: 180px"
+            placeholder="请选择空间级别"
+            :options="SPACE_LEVEL_OPTIONS"
+            allow-clear
+          />
+        </a-form-item>
+        <a-form-item name="spaceType" label="空间类别">
+          <a-select
+            v-model:value="searchParams.spaceType"
+            style="min-width: 180px"
+            placeholder="请选择空间类别"
+            :options="SPACE_TYPE_OPTIONS"
+            allow-clear
+          />
+        </a-form-item>
+        <a-form-item label="用户ID">
+          <a-input v-model:value="searchParams.userId" placeholder="请输入用户ID" allow-clear />
+        </a-form-item>
+        <a-form-item>
+          <a-button type="primary" html-type="submit">搜索</a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
 
-    <div style="margin-bottom: 16px" />
-    <!-- 表格 -->
-    <a-table
-      :columns="columns"
-      :data-source="dataList"
-      :pagination="pagination"
-      @change="doTableChange"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.dataIndex === 'url'">
-          <a-image :src="record.url" :width="100" :height="100" />
+    <a-card :bordered="false" style="border-radius: 16px">
+      <!-- 表格 -->
+      <a-table
+        :columns="columns"
+        :data-source="dataList"
+        :pagination="pagination"
+        :scroll="{ x: 1200 }"
+        row-key="id"
+        @change="doTableChange"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.dataIndex === 'id'">
+            <a-typography-text copyable>{{ record.id }}</a-typography-text>
+          </template>
+          <template v-else-if="column.dataIndex === 'spaceLevel'">
+            <a-tag color="blue">{{ SPACE_LEVEL_MAP[record.spaceLevel] }}</a-tag>
+          </template>
+          <template v-else-if="column.dataIndex === 'spaceType'">
+            <a-tag color="green">{{ SPACE_TYPE_MAP[record.spaceType] }}</a-tag>
+          </template>
+          <template v-else-if="column.dataIndex === 'spaceUseInfo'">
+            <div style="line-height: 1.4">
+              <div style="font-size: 12px">
+                {{ formatSize(record.totalSize) }} / {{ formatSize(record.maxSize) }}
+              </div>
+              <div style="font-size: 12px; color: #666">
+                {{ record.totalCount }} / {{ record.maxCount }} 张
+              </div>
+            </div>
+          </template>
+          <template v-else-if="column.dataIndex === 'userId'">
+            <a-typography-text copyable>{{ record.userId }}</a-typography-text>
+          </template>
+          <template v-else-if="column.dataIndex === 'createTime'">
+            <div style="font-size: 12px">
+              {{ dayjs(record.createTime).format('YYYY-MM-DD HH:mm') }}
+            </div>
+          </template>
+          <template v-else-if="column.dataIndex === 'updateTime'">
+            <div style="font-size: 12px">
+              {{ dayjs(record.updateTime).format('YYYY-MM-DD HH:mm') }}
+            </div>
+          </template>
+          <template v-else-if="column.key === 'action'">
+            <a-space wrap>
+              <a-button
+                type="primary"
+                ghost
+                size="small"
+                :href="`/space_analyze?spaceId=${record.id}`"
+                target="_blank"
+              >
+                分析
+              </a-button>
+              <a-button
+                type="primary"
+                ghost
+                size="small"
+                :href="`/add_space?id=${record.id}`"
+                target="_blank"
+              >
+                编辑
+              </a-button>
+              <a-popconfirm
+                title="确定要删除该空间吗？"
+                ok-text="确定"
+                cancel-text="取消"
+                @confirm="doDelete(record.id)"
+              >
+                <a-button type="primary" danger size="small">删除</a-button>
+              </a-popconfirm>
+            </a-space>
+          </template>
         </template>
-        <template v-else-if="column.dataIndex === 'tags'">
-          <a-space wrap>
-            <a-tag v-for="tag in JSON.parse(record.tags || '[]')" :key="tag">
-              {{ tag }}
-            </a-tag>
-          </a-space>
-        </template>
-        <template v-else-if="column.dataIndex === 'picInfo'">
-          <div>格式：{{ record.picFormat }}</div>
-          <div>宽度：{{ record.picWidth }}</div>
-          <div>高度：{{ record.picHeight }}</div>
-          <div>宽高比：{{ record.picScale }}</div>
-          <div>大小：{{ (record.picSize / 1024).toFixed(2) }}KB</div>
-        </template>
-        <template v-else-if="column.dataIndex === 'reviewMessage'">
-          <div>审核状态：{{ PIC_REVIEW_STATUS_MAP[record.reviewStatus] }}</div>
-          <div>审核信息：{{ record.reviewMessage }}</div>
-          <div>审核人：{{ record.reviewerId }}</div>
-          <div v-if="record.reviewTime">
-            审核时间：{{ dayjs(record.updateTime).format('YYYY-MM-DD HH:mm:ss') }}
-          </div>
-        </template>
-        <template v-else-if="column.dataIndex === 'crateTime'">
-          {{ dayjs(record.updateTime).format('YYYY-MM-DD HH:mm:ss') }}
-        </template>
-        <template v-else-if="column.dataIndex === 'editTime'">
-          {{ dayjs(record.updateTime).format('YYYY-MM-DD HH:mm:ss') }}
-        </template>
-        <template v-else-if="column.key === 'action'">
-          <a-space wrap>
-            <!--            下面把编辑按钮的type从link改成了primary-->
-            <a-button
-              v-if="record.reviewStatus !== PIC_REVIEW_STATUS_ENUM.PASS"
-              type="primary"
-              @click="handleReview(record, PIC_REVIEW_STATUS_ENUM.PASS)"
-            >
-              通过
-            </a-button>
-            <a-button
-              v-if="record.reviewStatus !== PIC_REVIEW_STATUS_ENUM.REJECT"
-              danger
-              @click="handleReview(record, PIC_REVIEW_STATUS_ENUM.REJECT)"
-            >
-              拒绝
-            </a-button>
-            <a-button type="primary" :href="`/add_picture?id=${record.id}`" target="_blank"
-              >编辑
-            </a-button>
-            <a-button danger @click="doDelete(record.id)">删除</a-button>
-          </a-space>
-        </template>
-      </template>
-    </a-table>
+      </a-table>
+    </a-card>
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+#spaceManagePage {
+  padding: 24px;
+  background-color: var(--ant-background);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 20px 0;
+}
+
+:deep(.ant-card-body) {
+  padding: 24px !important;
+}
+
+:deep(.ant-form-item) {
+  margin-bottom: 16px !important;
+}
+
+:deep(.ant-table-tbody > tr > td) {
+  padding: 12px 8px !important;
+  vertical-align: top;
+}
+
+:deep(.ant-table-thead > tr > th) {
+  padding: 12px 8px !important;
+  background-color: #fafafa;
+  font-weight: 600;
+}
+
+:deep(.ant-typography-copy) {
+  margin-left: 8px;
+}
+
+/* 响应式调整 */
+@media (max-width: 992px) {
+  :deep(.ant-form-item) {
+    width: calc(50% - 8px);
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  #spaceManagePage {
+    padding: 16px;
+  }
+
+  :deep(.ant-form-item) {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .page-header {
+    padding: 16px 0;
+  }
+}
+</style>

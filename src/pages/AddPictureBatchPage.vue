@@ -3,152 +3,63 @@ import PictureUpload from '@/components/PictureUpload.vue'
 import { onMounted, reactive, ref } from 'vue'
 import { userLogin } from '@/api/userController.ts'
 import { message } from 'ant-design-vue'
-import { editPicture, getPictureVoById, listPictureTagCategory } from '@/api/pictureController.ts'
+import { editPicture, getPictureVoById, listPictureTagCategory, uploadPictureByBatch } from '@/api/pictureController.ts'
 import { useRoute, useRouter } from 'vue-router'
 import UrlPictureUpload from '@/components/UrlPictureUpload.vue'
 
-const picture = ref<API.PictureVO>()
-const pictureForm = reactive<API.PictureEditRequest>({})
-const uploadType = ref<'file' | 'url'>('file')
-/**
- * 图片上传成功
- * @param newPicture
- */
-const onSuccess = (newPicture: API.PictureVO) => {
-  picture.value = newPicture
-  pictureForm.name = newPicture.name
-}
+const formData = reactive<API.PictureUploadByBatchRequest>({
+  count: 10,
+})
 
+// 提交任务状态
+const loading = ref(false)
 const router = useRouter()
 /**
  * 提交表单
  * @param values
  */
 const handleSubmit = async (values: any) => {
-  const pictureId = picture.value.id
-  if (!picture) {
-    return
-  }
-  const res = await editPicture({
-    id: pictureId,
-    ...values,
+  loading.value = true
+  const res = await uploadPictureByBatch({
+    ...formData,
   })
   // 操作成功
   if (res.data.code === 0 && res.data) {
-    message.success('图片创建成功')
-    // 跳转到图片详情页
+    message.success(`图片创建成功，共 ${res.data.data} 条`)
+    // 跳转到主页
     router.push({
-      path: `/picture/${pictureId}`,
+      path: '/',
     })
   } else {
     message.error('创建失败， ' + res.data.message)
   }
+  loading.value = false
 }
-
-const categoryOptions = ref<{ value: string; label: string }[]>([])
-const tagOptions = ref<{ value: string; label: string }[]>([])
-
-/**
- * 获取标签和分类选项
- * @param
- */
-const getTagCategoryOptions = async () => {
-  const res = await listPictureTagCategory()
-  if (res.data.code === 0 && res.data.data) {
-    tagOptions.value = (res.data.data.tagList ?? []).map((data: string) => {
-      return {
-        value: data,
-        label: data,
-      }
-    })
-    categoryOptions.value = (res.data.data.categoryList ?? []).map((data: string) => {
-      return {
-        value: data,
-        label: data,
-      }
-    })
-  } else {
-    message.error('获取标签分类列表失败， ' + res.data.message)
-  }
-}
-
-onMounted(() => {
-  // 获取标签和分类选项
-  getTagCategoryOptions()
-})
-
-const route = useRoute()
-const getOldPicture = async () => {
-  // 获取到id
-  const id = route.query?.id
-  if (id) {
-    const res = await getPictureVoById({ id });
-    if (res.data.code === 0 && res.data.data) {
-      const data = res.data.data;
-      picture.value = data;
-      pictureForm.name = data.name;
-      pictureForm.introduction = data.introduction;
-      pictureForm.category = data.category;
-      pictureForm.tags = data.tags;
-    } else {
-      message.error('获取图片信息失败， ' + res.data.message)
-    }
-  }
-}
-
-onMounted(() => {
-  getOldPicture();
-})
 </script>
 
 <template>
-  <div id="addPicturePage">
-    <h2 style="margin-bottom: 16px">
-      {{ route.query?.id ? '修改图片' : '创建图片' }}
-    </h2>
-    <!-- 选择上传方式 -->
-    <a-tabs v-model:activeKey="uploadType">
-      <a-tab-pane key="file" tab="本地文件上传">
-        <!-- 图片上传组件 -->
-        <PictureUpload :picture="picture" :onSuccess="onSuccess" />
-      </a-tab-pane>
-      <a-tab-pane key="url" tab="URL 上传" force-render>
-        <!-- URL 图片上传组件 -->
-        <UrlPictureUpload :picture="picture" :onSuccess="onSuccess" />
-      </a-tab-pane>
-    </a-tabs>
+  <div id="addPictureBatchPage">
     <!-- 图片信息表单 -->
-    <a-form v-if="picture" layout="vertical" :model="pictureForm" @finish="handleSubmit">
-      <a-form-item label="图片名称" name="name">
-        <a-input v-model:value="pictureForm.name" placeholder="请输入名称" allow-clear />
+    <a-form layout="vertical" :model="formData" @finish="handleSubmit">
+      <a-form-item label="关键词" name="searchText">
+        <a-input v-model:value="formData.searchText" placeholder="请输入关键词" allow-clear />
       </a-form-item>
-      <a-form-item label="图片简介" name="introduction">
-        <a-textarea
-          v-model:value="pictureForm.introduction"
-          placeholder="请输入描述"
-          :auto-size="{ minRows: 2, maxRows: 5 }"
+      <a-form-item label="抓取数量" name="count">
+        <a-input-number
+          v-model:value="formData.count"
+          placeholder="请输入数量"
+          style="width: 180px"
+          :min="1"
+          :max="30"
           allow-clear
         />
       </a-form-item>
-      <a-form-item label="图片分类" name="category">
-        <a-auto-complete
-          v-model:value="pictureForm.category"
-          :options="categoryOptions"
-          placeholder="请输入分类"
-          allow-clear
-        />
+      <a-form-item label="名称前缀" name="namePrefix">
+        <a-input v-model:value="formData.namePrefix" placeholder="请输入名称前缀，会自动补充序号" allow-clear />
       </a-form-item>
-      <a-form-item label="图片标签" name="tags">
-        <a-select
-          v-model:value="pictureForm.tags"
-          mode="tags"
-          :options="tagOptions"
-          placeholder="请输入标签"
-          allow-clear
-        />
-      </a-form-item>
+
       <a-form-item>
-        <a-button type="primary" html-type="submit" style="width: 100%">创建</a-button>
+        <a-button type="primary" html-type="submit" style="width: 100%" :loading="loading">执行任务</a-button>
       </a-form-item>
     </a-form>
   </div>

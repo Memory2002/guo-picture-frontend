@@ -2,7 +2,7 @@
 import VChart from "vue-echarts";
 import "echarts";
 import { computed, ref, watchEffect } from 'vue'
-import { getSpaceCategoryAnalyze, getSpaceUsageAnalyze } from '@/api/spaceAnalyzeController.ts'
+import { getSpaceCategoryAnalyze, getSpaceUsageAnalyze, getSpaceUserAnalyze } from '@/api/spaceAnalyzeController.ts'
 import { message } from 'ant-design-vue'
 
 interface Props {
@@ -16,21 +16,48 @@ const props = withDefaults(defineProps<Props>(), {
   queryPublic: false,
 })
 
+// 时间维度选项，默认为按天
+const timeDimension = ref<'day' | 'week' | 'month'>('day')
+
+// 分段选择器组件的选项
+const timeDimensionOptions = [
+  {
+    label: '日',
+    value: 'day',
+  },
+  {
+    label: '周',
+    value: 'week',
+  },
+  {
+    label: '月',
+    value: 'month',
+  },
+]
+
+
 // 加载状态
 const loading = ref(true)
 
 
 // 图标数据
 const dataList = ref<API.SpaceCategoryAnalyzeResponse>([])
+// 用户 id 选项
+const userId = ref<string>()
 
+const doSearch = (value: string) => {
+  userId.value = value
+}
 // #获取图片列表
 const fetchData = async () => {
   loading.value = true
   // 转换搜索参数
-  const res = await getSpaceCategoryAnalyze({
+  const res = await getSpaceUserAnalyze({
     queryAll: props.queryAll,
     queryPublic: props.queryPublic,
     spaceId: props.spaceId,
+    timeDimension: timeDimension.value,
+    userId: userId.value,
   })
   if (res.data.code === 0 && res.data.data) {
     dataList.value = res.data.data ?? []
@@ -43,39 +70,27 @@ const fetchData = async () => {
 
 // 图标选项
 const options = computed(() => {
-  const categories = dataList.value.map((item) => item.category)
-  const countData = dataList.value.map((item) => item.count)
-  const sizeData = dataList.value.map((item) => (item.totalSize / (1024 * 1024)).toFixed(2)) // 转为 MB
+  const periods = dataList.value.map((item) => item.period) // 时间区间
+  const counts = dataList.value.map((item) => item.count) // 上传数量
 
   return {
     tooltip: { trigger: 'axis' },
-    legend: { data: ['图片数量', '图片总大小'], top: 'bottom' },
-    xAxis: { type: 'category', data: categories },
-    yAxis: [
+    xAxis: { type: 'category', data: periods, name: '时间区间' },
+    yAxis: { type: 'value', name: '上传数量' },
+    series: [
       {
-        type: 'value',
-        name: '图片数量',
-        axisLine: { show: true, lineStyle: { color: '#5470C6' } }, // 左轴颜色
-      },
-      {
-        type: 'value',
-        name: '图片总大小 (MB)',
-        position: 'right',
-        axisLine: { show: true, lineStyle: { color: '#91CC75' } }, // 右轴颜色
-        splitLine: {
-          lineStyle: {
-            color: '#91CC75', // 调整网格线颜色
-            type: 'dashed', // 线条样式：可选 'solid', 'dashed', 'dotted'
-          },
+        name: '上传数量',
+        type: 'line',
+        data: counts,
+        smooth: true, // 平滑折线
+        emphasis: {
+          focus: 'series',
         },
       },
     ],
-    series: [
-      { name: '图片数量', type: 'bar', data: countData, yAxisIndex: 0 },
-      { name: '图片总大小', type: 'bar', data: sizeData, yAxisIndex: 1 },
-    ],
   }
 })
+
 
 /**
  * 监听变量，参数改变时触发数据的重新加载
@@ -86,9 +101,15 @@ watchEffect(() => {
 </script>
 
 <template>
-  <div class="space-category-analyze">
-    <a-card title="空间图片分类分析">
-      <v-chart :option="options" style="height: 320px; max-width: 100%;" :loading="loading" />
+  <div class="space-user-analyze">
+    <a-card title="空间图片用户分析">
+      <v-chart :option="options" style="height: 320px; max-width: 100%" :loading="loading" />
+      <template #extra>
+        <a-space>
+          <a-segmented v-model:value="timeDimension" :options="timeDimensionOptions" />
+          <a-input-search placeholder="请输入用户 id" enter-button="搜索用户" @search="doSearch"/>
+        </a-space>
+      </template>
     </a-card>
   </div>
 </template>

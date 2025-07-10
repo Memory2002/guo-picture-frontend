@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { SmileOutlined, DownOutlined } from '@ant-design/icons-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, computed } from 'vue'
 import { deleteUser, listUserVoByPage } from '@/api/userController.ts'
-import { message } from 'ant-design-vue'
+import { message, type TablePaginationConfig } from 'ant-design-vue'
 import dayjs from 'dayjs'
+
 const columns = [
   {
     title: 'id',
@@ -77,13 +77,13 @@ const pagination = computed(() => {
     current: searchParams.current,
     pageSize: searchParams.pageSize,
     total: total.value,
-    showTotal: (total: number) => `总共 ${total} 条`,
+    showTotal: (t: number) => `总共 ${t} 条`,
     showSizeChanger: true,
   }
 })
 
 // 表格变化之后重新获取数据
-const doTableChange = (page: any) => {
+const doTableChange = (page: TablePaginationConfig) => {
   // 更新搜索条件
   searchParams.current = page.current
   searchParams.pageSize = page.pageSize
@@ -118,51 +118,80 @@ const doDelete = async (id: number) => {
 
 <template>
   <div id="userManagePage">
-    <!-- 搜索表单 -->
-    <a-form layout="inline" :model="searchParams" @finish="doSearch">
-      <a-form-item label="账号">
-        <a-input v-model:value="searchParams.userAccount" placeholder="输入账号" allow-clear />
-      </a-form-item>
-      <a-form-item label="用户名">
-        <a-input v-model:value="searchParams.userName" placeholder="输入用户名" allow-clear />
-      </a-form-item>
-      <a-form-item>
-        <a-button type="primary" html-type="submit">搜索</a-button>
-      </a-form-item>
-    </a-form>
+    <a-card :bordered="false" style="border-radius: 16px; margin-bottom: 24px">
+      <!-- 搜索表单 -->
+      <a-form layout="inline" :model="searchParams" @finish="doSearch">
+        <a-form-item label="账号">
+          <a-input v-model:value="searchParams.userAccount" placeholder="输入账号" allow-clear />
+        </a-form-item>
+        <a-form-item label="用户名">
+          <a-input v-model:value="searchParams.userName" placeholder="输入用户名" allow-clear />
+        </a-form-item>
+        <a-form-item>
+          <a-button type="primary" html-type="submit">搜索</a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
 
-    <div style="margin-bottom: 16px" />
-    <!-- 表格 -->
-    <a-table
-      :columns="columns"
-      :data-source="dataList"
-      :pagination="pagination"
-      @change="doTableChange"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.dataIndex === 'userAvatar'">
-          <a-image :src="record.userAvatar" :width="100" :height="100" />
+    <a-card :bordered="false" style="border-radius: 16px">
+      <!-- 表格 -->
+      <a-table
+        :columns="columns"
+        :data-source="dataList"
+        :pagination="pagination"
+        row-key="id"
+        @change="doTableChange"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.dataIndex === 'userAvatar'">
+            <a-avatar :src="record.userAvatar" :size="48" />
+          </template>
+          <template v-else-if="column.dataIndex === 'userRole'">
+            <a-tag :color="record.userRole === 'admin' ? 'green' : 'blue'">
+              {{ record.userRole === 'admin' ? '管理员' : '普通用户' }}
+            </a-tag>
+          </template>
+          <template v-else-if="column.dataIndex === 'createTime'">
+            {{ dayjs(record.createTime).format('YYYY-MM-DD HH:mm:ss') }}
+          </template>
+          <template v-else-if="column.dataIndex === 'updateTime'">
+            {{ dayjs(record.updateTime).format('YYYY-MM-DD HH:mm:ss') }}
+          </template>
+          <template v-else-if="column.key === 'action'">
+            <a-popconfirm
+              title="确定要删除该用户吗？"
+              ok-text="确定"
+              cancel-text="取消"
+              @confirm="doDelete(record.id)"
+            >
+              <a-button type="primary" danger>删除</a-button>
+            </a-popconfirm>
+          </template>
         </template>
-        <template v-else-if="column.dataIndex === 'userRole'">
-          <div v-if="record.userRole === 'admin'">
-            <a-tag color="green">管理员</a-tag>
-          </div>
-          <div v-else>
-            <a-tag color="blue">普通用户</a-tag>
-          </div>
-        </template>
-        <template v-else-if="column.dataIndex === 'createTime'">
-          {{ dayjs(record.createTime).format('YYYY-MM-DD HH:mm:ss') }}
-        </template>
-        <template v-else-if="column.dataIndex === 'updateTime'">
-          {{ dayjs(record.updateTime).format('YYYY-MM-DD HH:mm:ss') }}
-        </template>
-        <template v-else-if="column.key === 'action'">
-          <a-button danger @click="doDelete(record.id)">删除</a-button>
-        </template>
-      </template>
-    </a-table>
+      </a-table>
+    </a-card>
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+#userManagePage {
+  padding: 24px;
+  background-color: var(--ant-background);
+}
+
+:deep(.ant-card-body) {
+  padding: 24px !important;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  #userManagePage {
+    padding: 16px;
+  }
+  :deep(.ant-form-item) {
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 16px !important;
+  }
+}
+</style>

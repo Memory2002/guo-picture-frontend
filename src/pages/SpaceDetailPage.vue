@@ -1,151 +1,246 @@
 <script setup lang="ts">
-import { ref, onMounted, h, computed } from 'vue'
-import { deletePicture, getPictureVoById } from '@/api/pictureController.ts'
+import { ref, onMounted, h, computed, reactive, watchEffect, watch } from 'vue'
+import { getSpaceVoById } from '@/api/spaceController.ts'
 import { message } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
-import { downloadImage, formatSize } from '@/utils'
-import { EditOutlined, DeleteOutlined, DownloadOutlined } from '@ant-design/icons-vue'
-import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
+import { listPictureVoByPage, searchPictureByColor } from '@/api/pictureController.ts'
+import { formatSize } from '@/utils'
+import PictureList from '@/components/PictureList.vue'
+import PictureSearchForm from '@/components/PictureSearchForm.vue'
+import { ColorPicker } from 'vue3-colorpicker'
+import 'vue3-colorpicker/style.css'
+import BatchEditPictureModal from '@/components/BatchEditPictureModal.vue'
+import { EditOutlined, BarChartOutlined, TeamOutlined } from '@ant-design/icons-vue'
+import { SPACE_PERMISSION_ENUM, SPACE_TYPE_MAP } from '@/constant/space.ts'
 
 interface Props {
   id: string | number
 }
 
 const props = defineProps<Props>()
-const picture = ref<API.PictureVO>({})
+const space = ref<API.SpaceVO>({})
 const loading = ref(true)
-const loginUserStore = useLoginUserStore()
 
-// 是否具有编辑权限
-const canEdit = computed(() => {
-  const loginUser = loginUserStore.loginUser;
-  // 未登录不可编辑
-  if (!loginUser.id) {
-    return false
-  }
-  // 仅本人或管理员可编辑
-  const user = picture.value.user || {}
-  return loginUser.id === user.id || loginUser.userRole === 'admin'
-})
+// 通用权限检查函数
+function createPermissionChecker(permission: string) {
+  return computed(() => {
+    return (space.value.permissionList ?? []).includes(permission)
+  })
+}
+
+// 定义权限检查
+const canManageSpaceUser = createPermissionChecker(SPACE_PERMISSION_ENUM.SPACE_USER_MANAGE)
+const canUploadPicture = createPermissionChecker(SPACE_PERMISSION_ENUM.PICTURE_UPLOAD)
+const canEditPicture = createPermissionChecker(SPACE_PERMISSION_ENUM.PICTURE_EDIT)
+const canDeletePicture = createPermissionChecker(SPACE_PERMISSION_ENUM.PICTURE_DELETE)
 
 const route = useRoute()
-// 获取图片详情
-const fetchPictureDetail = async () => {
+// region 获取空间详情
+const fetchSpaceDetail = async () => {
   loading.value = true
   try {
-    const res = await getPictureVoById({
-      id: props.id
+    const res = await getSpaceVoById({
+      id: props.id,
     })
     if (res.data.code === 0 && res.data.data) {
-      picture.value = res.data.data
+      space.value = res.data.data
     } else {
-      message.error('获取图片详情失败， ' + res.data.message)
+      message.error('获取空间详情失败， ' + res.data.message)
     }
   } catch (e: any) {
-    message.error('获取图片详情失败， ' + e.message)
+    message.error('获取空间详情失败， ' + e.message)
   }
   loading.value = false
 }
 
 onMounted(() => {
-  fetchPictureDetail()
+  fetchSpaceDetail()
 })
 
-const router = useRouter()
-// 编辑
-const doEdit = () => {
-  router.push('/add_picture?id=' + picture.value.id)
+// endregion
+
+// region 获取图片列表
+// 数据
+const dataList = ref<API.PictureVO[]>([])
+const total = ref(0)
+
+// 搜索条件
+const searchParams = ref<API.PictureQueryRequest>({
+  current: 1,
+  pageSize: 12, // 12张图片一页，12是2，3，4的倍数
+  sortField: 'createTime',
+  sortOrder: 'descend',
+})
+
+const onPageChange = (page: number, pageSize: number) => {
+  searchParams.value.current = page
+  searchParams.value.pageSize = pageSize
+  fetchData()
 }
-// 删除
-const doDelete = async () => {
-  const id = picture.value.id
-  if (!id) {
+
+// #获取图片列表
+const fetchData = async () => {
+  loading.value = true
+  // 转换搜索参数
+  const params = {
+    spaceId: props.id,
+    ...searchParams.value,
+  }
+  const res = await listPictureVoByPage(params)
+  if (res.data.code === 0 && res.data.data) {
+    dataList.value = res.data.data.records ?? []
+    total.value = res.data.data.total ?? 0
+  } else {
+    message.error('获取数据失败，' + res.data.message)
+  }
+  loading.value = false
+}
+
+// 页面加载时请求一次
+onMounted(() => {
+  fetchData()
+})
+
+// endregion
+
+const onSearch = (newSearchParams: API.PictureQueryRequest) => {
+  searchParams.value = {
+    ...searchParams.value,
+    ...newSearchParams,
+    current: 1,
+  }
+  fetchData()
+}
+
+// 按照颜色搜索
+const onColorChange = async (color: string) => {
+  loading.value = true
+  const res = await searchPictureByColor({
+    picColor: color,
+    spaceId: props.id,
+  })
+  if (res.data.code === 0 && res.data.data) {
+    const data = res.data.data
+    dataList.value = data
+    total.value = data.length
+  } else {
+    message.error('按颜色搜索失败，' + res.data.message)
+  }
+  loading.value = false
+}
+
+// 批量编辑图片
+const batchEditPictureModalRef = ref()
+
+// 批量编辑图片成功回调
+const onBatchEditPictureSuccess = () => {
+  fetchData()
+}
+
+// 打开批量编辑图片弹窗
+const doBathcEdit = () => {
+  if (dataList.value.length === 0) {
+    message.warning('没有图片可以批量编辑')
     return
   }
-  const res = await deletePicture({ id })
-  if (res.data.code === 0) {
-    message.success('删除成功')
-  } else {
-    message.error('删除失败')
-  }
+  batchEditPictureModalRef.value?.openModal()
 }
 
-// 下载图片
-const doDownload = () => {
-  downloadImage(picture.value.url)
-}
-
+// 空间 id 改变时，必须重新获取数据
+watch(
+  () => props.id,
+  () => {
+    fetchSpaceDetail()
+    fetchData()
+  },
+)
 </script>
 
 <template>
-  <div id="PictureDetailPage">
-    <a-row :gutter="[16, 16]">  <!--横向间距和纵向间距-->
-      <!-- 图片预览 -->
-      <a-col :sm="24" :md="12" :xl="18">
-        <a-card title="图片预览">
-          <a-image :src="picture.url" :alt="picture.name" style="max-height: 600px; object-fit: contain;" />
-        </a-card>
-      </a-col>
-      <!-- 图片信息区域 -->
-      <a-col :sm="24" :md="12" :xl="6">
-        <a-card title="图片信息">
-          <a-descriptions :column="1">
-            <a-descriptions-item label="作者">
-              <a-space>
-                <a-avatar :size="24" :src="picture.user?.userAvatar" />
-                <div>{{ picture.user?.userName }}</div>
-              </a-space>
-            </a-descriptions-item>
-            <a-descriptions-item label="名称">
-              {{ picture.name ?? '未命名' }}
-            </a-descriptions-item>
-            <a-descriptions-item label="简介">
-              {{ picture.introduction ?? '-' }}
-            </a-descriptions-item>
-            <a-descriptions-item label="分类">
-              {{ picture.category ?? '默认' }}
-            </a-descriptions-item>
-            <a-descriptions-item label="标签">
-              <a-tag v-for="tag in picture.tags" :key="tag">
-                {{ tag }}
-              </a-tag>
-            </a-descriptions-item>
-            <a-descriptions-item label="格式">
-              {{ picture.picFormat ?? '-' }}
-            </a-descriptions-item>
-            <a-descriptions-item label="宽度">
-              {{ picture.picWidth ?? '-' }}
-            </a-descriptions-item>
-            <a-descriptions-item label="高度">
-              {{ picture.picHeight ?? '-' }}
-            </a-descriptions-item>
-            <a-descriptions-item label="宽高比">
-              {{ picture.picScale ?? '-' }}
-            </a-descriptions-item>
-            <a-descriptions-item label="大小">
-              {{ formatSize(picture.picSize) }}
-            </a-descriptions-item>
-          </a-descriptions>
-          <!-- 图片操作  -->
-          <a-space wrap>
-            <a-button type="primary" @click="doDownload">
-              免费下载
-              <template #icon>  <!--这里是直接用插槽引入图标，下面是用渲染的形式引入图标 -->
-                <DownloadOutlined />
-              </template>
-            </a-button>
-            <a-button v-if="canEdit" :icon="h(EditOutlined)" type="default" @click="doEdit">编辑</a-button>
-            <a-button v-if="canEdit" :icon="h(DeleteOutlined)" danger @click="doDelete">删除</a-button>
-          </a-space>
-        </a-card>
-      </a-col>
-    </a-row>
+  <div id="SpaceDetailPage">
+    <!-- 空间信息 -->
+    <a-flex justify="space-between">
+      <h2>{{ space.spaceName }}（{{ SPACE_TYPE_MAP[space.spaceType] }}）</h2>
+      <a-space>
+        <a-button
+          v-if="canUploadPicture"
+          type="primary"
+          :href="`/add_picture?spaceId=${id}`"
+          target="_blank"
+        >
+          + 创建图片
+        </a-button>
+        <a-button
+          v-if="canManageSpaceUser"
+          :icon="h(TeamOutlined)"
+          type="primary"
+          ghost
+          :href="`/spaceUserManage/${id}`"
+          target="_blank"
+        >
+          成员管理
+        </a-button>
+        <a-button
+          v-if="canManageSpaceUser"
+          :icon="h(BarChartOutlined)"
+          type="primary"
+          ghost
+          :href="`/space_analyze?spaceId=${id}`"
+          target="_blank"
+        >
+          空间分析
+        </a-button>
+        <a-button v-if="canEditPicture" :icon="h(EditOutlined)" @click="doBathcEdit">
+          批量编辑</a-button
+        >
+        <a-tooltip
+          :title="`占用空间 ${formatSize(space.totalSize)} / ${formatSize(space.maxSize)}`"
+        >
+          <a-progress
+            type="circle"
+            :size="42"
+            :percent="((space.totalSize * 100) / space.maxSize).toFixed(1)"
+          />
+        </a-tooltip>
+      </a-space>
+    </a-flex>
+    <!-- 搜索表单 -->
+    <PictureSearchForm :onSearch="onSearch" />
+    <div style="margin-bottom: 16px" />
+    <!-- 按颜色搜索，跟其他搜索条件独立 -->
+    <a-form-item label="按颜色搜索">
+      <color-picker format="hex" @pureColorChange="onColorChange" />
+    </a-form-item>
+    <div style="margin-bottom: 16px" />
+    <!-- 图片列表 -->
+    <!--    gutter之前是16 -->
+    <PictureList
+      :dataList="dataList"
+      :loading="loading"
+      :showOps="true"
+      :canEdit="canEditPicture"
+      :canDelete="canDeletePicture"
+      :onReload="fetchData"
+    />
+    <!-- 分页 -->
+    <a-pagination
+      style="text-align: right"
+      v-model:current="searchParams.current"
+      v-model:page-size="searchParams.pageSize"
+      :total="total"
+      @change="onPageChange"
+    />
+    <BatchEditPictureModal
+      ref="batchEditPictureModalRef"
+      :spaceId="id"
+      :pictureList="dataList"
+      :onSuccess="onBatchEditPictureSuccess"
+    />
   </div>
 </template>
 
 <style scoped>
-#PictureDetailPage {
+#SpaceDetailPage {
   margin-bottom: 16px;
 }
-
 </style>

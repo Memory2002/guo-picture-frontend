@@ -1,162 +1,278 @@
 <script setup lang="ts">
-import PictureUpload from '@/components/PictureUpload.vue'
-import { onMounted, reactive, ref } from 'vue'
-import { userLogin } from '@/api/userController.ts'
+import { computed, onMounted, reactive, ref, h } from 'vue'
 import { message } from 'ant-design-vue'
-import { editPicture, getPictureVoById, listPictureTagCategory } from '@/api/pictureController.ts'
+import { addSpace, getSpaceVoById, listSpaceLevel, updateSpace } from '@/api/spaceController.ts'
 import { useRoute, useRouter } from 'vue-router'
-import UrlPictureUpload from '@/components/UrlPictureUpload.vue'
+import { SPACE_LEVEL_OPTIONS, SPACE_TYPE_ENUM, SPACE_TYPE_MAP } from '@/constant/space.ts'
+import { formatSize } from '@/utils'
+import {
+  StarOutlined,
+  CrownOutlined,
+  FireOutlined,
+  ThunderboltOutlined,
+  GiftOutlined,
+} from '@ant-design/icons-vue'
 
-const picture = ref<API.PictureVO>()
-const pictureForm = reactive<API.PictureEditRequest>({})
-const uploadType = ref<'file' | 'url'>('file')
-/**
- * 图片上传成功
- * @param newPicture
- */
-const onSuccess = (newPicture: API.PictureVO) => {
-  picture.value = newPicture
-  pictureForm.name = newPicture.name
-}
+const space = ref<API.SpaceVO>()
+const spaceForm = reactive<API.SpaceAddRequest>({
+  spaceLevel: undefined,
+  spaceName: undefined,
+})
+const loading = ref(false)
 
-const router = useRouter()
-/**
- * 提交表单
- * @param values
- */
-const handleSubmit = async (values: any) => {
-  const pictureId = picture.value.id
-  if (!picture) {
-    return
-  }
-  const res = await editPicture({
-    id: pictureId,
-    ...values,
-  })
-  // 操作成功
-  if (res.data.code === 0 && res.data) {
-    message.success('图片创建成功')
-    // 跳转到图片详情页
-    router.push({
-      path: `/picture/${pictureId}`,
-    })
+const route = useRoute()
+// 空间类别，默认为私有空间
+const spaceType = computed(() => {
+  if (route.query?.type) {
+    return Number(route.query.type)
   } else {
-    message.error('创建失败， ' + res.data.message)
+    return SPACE_TYPE_ENUM.PRIVATE
   }
-}
+})
 
-const categoryOptions = ref<{ value: string; label: string }[]>([])
-const tagOptions = ref<{ value: string; label: string }[]>([])
+const spaceLevelList = ref<API.SpaceLevel[]>([])
 
-/**
- * 获取标签和分类选项
- * @param
- */
-const getTagCategoryOptions = async () => {
-  const res = await listPictureTagCategory()
+// 获取空间级别列表
+const fetchSpaceLevelList = async () => {
+  const res = await listSpaceLevel()
   if (res.data.code === 0 && res.data.data) {
-    tagOptions.value = (res.data.data.tagList ?? []).map((data: string) => {
-      return {
-        value: data,
-        label: data,
-      }
-    })
-    categoryOptions.value = (res.data.data.categoryList ?? []).map((data: string) => {
-      return {
-        value: data,
-        label: data,
-      }
-    })
+    spaceLevelList.value = res.data.data
   } else {
-    message.error('获取标签分类列表失败， ' + res.data.message)
+    message.error('获取空间级别列表失败， ' + res.data.message)
   }
 }
 
 onMounted(() => {
-  // 获取标签和分类选项
-  getTagCategoryOptions()
+  fetchSpaceLevelList()
 })
+const router = useRouter()
+/**
+ * 提交表单
+ */
+const handleSubmit = async () => {
+  const spaceId = space.value?.id
+  loading.value = true
+  let res
+  // spaceId 存在，说明是更新空间
+  if (spaceId) {
+    res = await updateSpace({
+      id: spaceId,
+      ...spaceForm,
+    })
+  } else {
+    // spaceId 不存在，说明是创建空间
+    res = await addSpace({
+      ...spaceForm,
+      spaceType: spaceType.value,
+    })
+  }
 
-const route = useRoute()
-const getOldPicture = async () => {
+  // 操作成功
+  if (res.data.code === 0 && res.data) {
+    message.success('操作成功')
+    // 跳转到空间详情页
+    router.push({
+      path: `/space/${res.data.data}`,
+    })
+  } else {
+    message.error('操作失败， ' + res.data.message)
+  }
+  loading.value = false
+}
+
+const getOldSpace = async () => {
   // 获取到id
   const id = route.query?.id
   if (id) {
-    const res = await getPictureVoById({ id });
+    const res = await getSpaceVoById({ id: Number(id) })
     if (res.data.code === 0 && res.data.data) {
-      const data = res.data.data;
-      picture.value = data;
-      pictureForm.name = data.name;
-      pictureForm.introduction = data.introduction;
-      pictureForm.category = data.category;
-      pictureForm.tags = data.tags;
+      const data = res.data.data
+      space.value = data
+      // 填充表单数据
+      spaceForm.spaceName = data.spaceName
+      spaceForm.spaceLevel = data.spaceLevel
     } else {
-      message.error('获取图片信息失败， ' + res.data.message)
+      message.error('获取空间信息失败， ' + res.data.message)
     }
   }
 }
 
 onMounted(() => {
-  getOldPicture();
+  getOldSpace()
 })
+
+// 根据空间级别获取对应图标
+const getSpaceLevelIcon = (spaceLevel: number) => {
+  switch (spaceLevel) {
+    // case 0:
+    //   return h(StarOutlined, { style: { color: '#52c41a' } })
+    // case 1:
+    //   return h(FireOutlined, { style: { color: '#fa541c' } })
+    // case 2:
+    //   return h(ThunderboltOutlined, { style: { color: '#1890ff' } })
+    // case 3:
+    //   return h(CrownOutlined, { style: { color: '#722ed1' } })
+    // case 4:
+    //   return h(GiftOutlined, { style: { color: '#eb2f96' } })
+    // default:
+    //   return h(StarOutlined, { style: { color: '#52c41a' } })
+
+    case 0:
+      return h(StarOutlined, { style: { color: '#52c41a' } })
+    case 1:
+      return h(ThunderboltOutlined, { style: { color: '#1890ff' } })
+    case 2:
+      return h(CrownOutlined, { style: { color: '#722ed1' } })
+  }
+}
+
+// 根据空间级别获取标签颜色
+const getSpaceLevelColor = (spaceLevel: number) => {
+  switch (spaceLevel) {
+    // case 0:
+    //   return 'green'
+    // case 1:
+    //   return 'orange'
+    // case 2:
+    //   return 'blue'
+    // case 3:
+    //   return 'purple'
+    // case 4:
+    //   return 'magenta'
+    // default:
+    //   return 'green'
+    case 0:
+      return 'green'
+    case 1:
+      return 'blue'
+    case 2:
+      return 'purple'
+    default:
+      return 'green'
+  }
+}
 </script>
 
 <template>
-  <div id="addPicturePage">
-    <h2 style="margin-bottom: 16px">
-      {{ route.query?.id ? '修改图片' : '创建图片' }}
-    </h2>
-    <!-- 选择上传方式 -->
-    <a-tabs v-model:activeKey="uploadType">
-      <a-tab-pane key="file" tab="本地文件上传">
-        <!-- 图片上传组件 -->
-        <PictureUpload :picture="picture" :onSuccess="onSuccess" />
-      </a-tab-pane>
-      <a-tab-pane key="url" tab="URL 上传" force-render>
-        <!-- URL 图片上传组件 -->
-        <UrlPictureUpload :picture="picture" :onSuccess="onSuccess" />
-      </a-tab-pane>
-    </a-tabs>
-    <!-- 图片信息表单 -->
-    <a-form v-if="picture" layout="vertical" :model="pictureForm" @finish="handleSubmit">
-      <a-form-item label="图片名称" name="name">
-        <a-input v-model:value="pictureForm.name" placeholder="请输入名称" allow-clear />
-      </a-form-item>
-      <a-form-item label="图片简介" name="introduction">
-        <a-textarea
-          v-model:value="pictureForm.introduction"
-          placeholder="请输入描述"
-          :auto-size="{ minRows: 2, maxRows: 5 }"
-          allow-clear
+  <div id="addSpacePage">
+    <!-- 页面标题 -->
+    <div class="page-header">
+      <a-typography-title :level="3" style="margin: 0">
+        {{ route.query?.id ? '修改' : '创建' }} {{ SPACE_TYPE_MAP[spaceType] }}
+      </a-typography-title>
+    </div>
+
+    <!-- 空间信息表单 -->
+    <a-card :bordered="false" style="border-radius: 16px; margin-bottom: 24px">
+      <template #title>
+        <span style="color: #1890ff">空间信息</span>
+      </template>
+      <a-form name="spaceForm" layout="vertical" :model="spaceForm" @finish="handleSubmit">
+        <a-form-item label="空间名称" name="spaceName">
+          <a-input
+            v-model:value="spaceForm.spaceName"
+            placeholder="请输入空间名称"
+            size="large"
+            allow-clear
+          />
+        </a-form-item>
+        <a-form-item name="spaceLevel" label="空间级别">
+          <a-select
+            v-model:value="spaceForm.spaceLevel"
+            size="large"
+            style="width: 100%"
+            placeholder="请选择空间级别"
+            :options="SPACE_LEVEL_OPTIONS"
+            allow-clear
+          />
+        </a-form-item>
+        <a-form-item style="margin-top: 24px">
+          <a-button
+            type="primary"
+            html-type="submit"
+            :loading="loading"
+            size="large"
+            style="width: 100%; height: 48px; font-size: 16px"
+          >
+            {{ route.query?.id ? '保存修改' : '创建空间' }}
+          </a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
+
+    <!-- 空间级别介绍 -->
+    <a-card :bordered="false" style="border-radius: 16px">
+      <template #title>
+        <span style="color: #1890ff">空间级别介绍</span>
+      </template>
+      <a-typography-paragraph style="margin-bottom: 16px">
+        <a-alert
+          type="info"
+          message="目前仅支持开通普通版，如需升级空间，请联系 Memory"
+          show-icon
+          style="margin-bottom: 16px"
         />
-      </a-form-item>
-      <a-form-item label="图片分类" name="category">
-        <a-auto-complete
-          v-model:value="pictureForm.category"
-          :options="categoryOptions"
-          placeholder="请输入分类"
-          allow-clear
-        />
-      </a-form-item>
-      <a-form-item label="图片标签" name="tags">
-        <a-select
-          v-model:value="pictureForm.tags"
-          mode="tags"
-          :options="tagOptions"
-          placeholder="请输入标签"
-          allow-clear
-        />
-      </a-form-item>
-      <a-form-item>
-        <a-button type="primary" html-type="submit" style="width: 100%">创建</a-button>
-      </a-form-item>
-    </a-form>
+        <a href="https://codefather.cn" target="_blank" style="color: #1890ff">
+          联系方式：https://codefather.cn
+        </a>
+      </a-typography-paragraph>
+      <a-space direction="vertical" style="width: 100%">
+        <a-card
+          v-for="spaceLevel in spaceLevelList"
+          :key="spaceLevel.value"
+          size="small"
+          :bordered="false"
+          style="background: #f9f9f9; border-radius: 8px"
+        >
+          <a-row align="middle">
+            <a-col :span="6">
+              <a-space>
+                <component :is="getSpaceLevelIcon(spaceLevel.value ?? 0)" />
+                <a-tag :color="getSpaceLevelColor(spaceLevel.value ?? 0)" style="margin: 0">
+                  {{ spaceLevel.text }}
+                </a-tag>
+              </a-space>
+            </a-col>
+            <a-col :span="9">
+              <span style="color: #666"> 存储空间：{{ formatSize(spaceLevel.maxSize) }} </span>
+            </a-col>
+            <a-col :span="9">
+              <span style="color: #666"> 图片数量：{{ spaceLevel.maxCount }} 张 </span>
+            </a-col>
+          </a-row>
+        </a-card>
+      </a-space>
+    </a-card>
   </div>
 </template>
 
 <style scoped>
-#addPicturePage {
-  max-width: 720px; /*一个平板的宽度*/
-  margin: 0 auto; /*居中显示*/
+#addSpacePage {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px;
+  background-color: var(--ant-background);
+}
+
+.page-header {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+:deep(.ant-card-body) {
+  padding: 24px !important;
+}
+
+:deep(.ant-form-item-label > label) {
+  color: #262626;
+  font-weight: 600;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  #addSpacePage {
+    padding: 16px;
+    max-width: 100%;
+  }
 }
 </style>
