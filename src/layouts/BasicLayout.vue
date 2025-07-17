@@ -1,26 +1,24 @@
 <script setup lang="ts">
-
 import GlobalHeader from '@/components/GlobalHeader.vue'
 import GlobalSider from '@/components/GlobalSider.vue'
 </script>
 
 <template>
   <div id="basicLayout">
-    <a-layout style="min-height: 100vh;">
+    <a-layout style="min-height: 100vh">
       <a-layout-header class="header">
-        <GlobalHeader/>
+        <GlobalHeader />
       </a-layout-header>
-      <a-layout>  <!--侧边栏和内容区是同级，可以在外面再套一层layout-->
-        <GlobalSider class="sider"/>
+      <a-layout>
+        <!--侧边栏和内容区是同级，可以在外面再套一层layout-->
+        <GlobalSider class="sider" />
         <a-layout-content class="content">
-          <router-view/>
+          <router-view />
         </a-layout-content>
       </a-layout>
 
       <a-layout-footer class="footer">
-        <a href="https://github.com/Memory2002" target="_blank">
-        妍夏光隙 by Memory
-        </a>
+        <a href="https://github.com/Memory2002" target="_blank"> 妍夏光隙 by Memory </a>
       </a-layout-footer>
     </a-layout>
   </div>
@@ -59,5 +57,6 @@ import GlobalSider from '@/components/GlobalSider.vue'
   left: 0;
   right: 0;
   text-align: center;
+  z-index: 6;
 }
 </style>

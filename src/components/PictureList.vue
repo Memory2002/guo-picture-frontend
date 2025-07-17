@@ -224,18 +224,20 @@ defineExpose({
                 <DeleteOutlined />
               </a-button>
             </div>
-          </div>
 
-          <!-- 图片信息 -->
-          <div class="picture-info">
-            <h3 class="picture-title">{{ picture.name }}</h3>
-            <div class="picture-tags">
-              <span class="category-tag">
-                {{ picture.category ?? '默认' }}
-              </span>
-              <span v-for="tag in picture.tags" :key="tag" class="tag-item">
-                {{ tag }}
-              </span>
+            <!-- 图片信息遮罩 -->
+            <div class="picture-info-overlay">
+              <div class="picture-info">
+                <h3 class="picture-title">{{ picture.name }}</h3>
+                <div class="picture-tags">
+                  <span class="category-tag">
+                    {{ picture.category ?? '默认' }}
+                  </span>
+                  <span v-for="tag in picture.tags" :key="tag" class="tag-item">
+                    {{ tag }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -280,8 +282,8 @@ defineExpose({
 }
 
 .waterfall-item:hover {
-  transform: translateY(-4px);
-  z-index: 10;
+  transform: translateY(-2px);
+  z-index: 5;
 }
 
 /* 图片卡片 */
@@ -314,7 +316,7 @@ defineExpose({
 }
 
 .image-container:hover .picture-image {
-  transform: scale(1.05);
+  transform: scale(1.02);
 }
 
 /* 悬浮操作按钮 */
@@ -327,6 +329,7 @@ defineExpose({
   opacity: 0;
   transform: translateY(-10px);
   transition: all 0.3s ease;
+  z-index: 2;
 }
 
 .image-container:hover .overlay-actions {
@@ -376,15 +379,34 @@ defineExpose({
   transform: scale(1.1);
 }
 
+/* 图片信息遮罩 */
+.picture-info-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.image-container:hover .picture-info-overlay {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* 图片信息 */
 .picture-info {
-  padding: 10px;
+  padding: 16px;
+  color: white;
 }
 
 .picture-title {
   font-size: 16px;
   font-weight: 600;
-  color: #2f3349;
+  color: white;
   margin: 0 0 8px 0;
   line-height: 1.4;
   display: -webkit-box;
@@ -392,6 +414,7 @@ defineExpose({
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .picture-tags {
@@ -410,21 +433,23 @@ defineExpose({
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .tag-item {
-  background: rgba(82, 196, 26, 0.1);
-  color: #52c41a;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
   padding: 4px 8px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 500;
-  border: 1px solid rgba(82, 196, 26, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
 }
 
 .tag-item:hover {
-  background: rgba(82, 196, 26, 0.2);
+  background: rgba(255, 255, 255, 0.3);
   transform: scale(1.05);
 }
 
@@ -524,18 +549,14 @@ defineExpose({
     border-color: rgba(255, 255, 255, 0.1);
   }
 
-  .picture-title {
-    color: #f0f2f5;
-  }
-
   .loading-container,
   .empty-container {
     background: rgba(35, 41, 55, 0.8);
   }
 
   .tag-item {
-    background: rgba(82, 196, 26, 0.15);
-    border-color: rgba(82, 196, 26, 0.3);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
   }
 }
 </style>
