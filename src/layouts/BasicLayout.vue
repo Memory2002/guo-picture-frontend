@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import GlobalHeader from '@/components/GlobalHeader.vue'
 import GlobalSider from '@/components/GlobalSider.vue'
+import { GithubOutlined } from '@ant-design/icons-vue'
 </script>
 
 <template>
@@ -18,7 +19,21 @@ import GlobalSider from '@/components/GlobalSider.vue'
       </a-layout>
 
       <a-layout-footer class="footer">
-        <a href="https://github.com/Memory2002" target="_blank"> 妍夏光隙 by Memory </a>
+        <!-- 妍夏光隙 by
+        <a href="https://github.com/Memory2002" target="_blank" style="margin-left: 6px">
+          <GithubOutlined style="font-size: 18px; vertical-align: middle"> Memory </GithubOutlined>
+        </a> -->
+        <div class="footer-content">
+          <a-space size="small">
+            <HeartOutlined style="color: #ff6b6b; animation: heartbeat 2s ease-in-out infinite" />
+            <span>妍夏光隙</span>
+            <span style="color: #999">by</span>
+            <a href="https://github.com/Memory2002" target="_blank" class="footer-link">
+              <GithubOutlined style="margin-right: 4px" />
+              Memory
+            </a>
+          </a-space>
+        </div>
       </a-layout-footer>
     </a-layout>
   </div>
@@ -58,5 +73,13 @@ import GlobalSider from '@/components/GlobalSider.vue'
   right: 0;
   text-align: center;
   z-index: 6;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--footer-text-color);
+  font-size: 14px;
 }
 </style>

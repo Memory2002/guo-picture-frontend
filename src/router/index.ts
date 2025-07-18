@@ -16,6 +16,7 @@ import SpaceDetailPage from '@/pages/SpaceDetailPage.vue'
 import SpaceAnalyzePage from '@/pages/SpaceAnalyzePage.vue'
 import SpaceUserManagePage from '@/pages/admin/SpaceUserManagePage.vue'
 import UserExchangeVipPage from '@/pages/user/UserExchangeVipPage.vue'
+import AboutPage from '@/pages/AboutPage.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -110,7 +111,8 @@ const router = createRouter({
       // route level code-splitting
       // this generates a separate chunk (About.[hash].js) for this route
       // which is lazy-loaded when the route is visited.
-      component: () => import('../views/AboutView.vue'),
+      // component: () => import('../views/AboutView.vue'),
+      component: AboutPage,
     },
   ],
 })

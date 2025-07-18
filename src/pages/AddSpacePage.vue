@@ -213,7 +213,7 @@ const getSpaceLevelColor = (spaceLevel: number) => {
           style="margin-bottom: 16px"
         />
         <a href="https://codefather.cn" target="_blank" style="color: #1890ff">
-          联系方式：https://codefather.cn
+          联系方式：guo_cheng@mail.ustc.edu.cn
         </a>
       </a-typography-paragraph>
       <a-space direction="vertical" style="width: 100%">

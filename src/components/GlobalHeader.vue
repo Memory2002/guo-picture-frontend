@@ -107,10 +107,15 @@ const originItems = [
     label: '空间管理',
     title: '空间管理',
   },
+  // {
+  //   key: 'others',
+  //   label: h('a', { href: 'https://www.codefather.cn', target: '_blank' }, '关于项目'),
+  //   title: '关于项目',
+  // },
   {
-    key: 'others',
-    label: h('a', { href: 'https://www.codefather.cn', target: '_blank' }, '编程导航'),
-    title: '编程导航',
+    key: '/about',
+    label: '关于项目',
+    title: '关于项目',
   },
 ]
 
